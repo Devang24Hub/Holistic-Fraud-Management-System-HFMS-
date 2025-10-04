@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HFMS - Admin Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
+        .page { display: none; }
+        .page-active { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div id="app-container">
+
+        <!-- ===== ADMIN LOGIN PAGE ===== -->
+        <div id="page-login" class="page page-active min-h-screen flex items-center justify-center bg-gray-800">
+            <div class="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-2xl">
+                <div class="text-center">
+                    <div class="flex justify-center items-center gap-4 mb-4">
+                        <i class="fas fa-user-cog text-4xl text-indigo-600"></i>
+                        <h1 class="text-3xl font-bold text-gray-900">HFMS Admin Portal</h1>
+                    </div>
+                    <p class="text-gray-600">Administrator Sign In</p>
+                </div>
+                <form id="login-form" class="space-y-6">
+                    <div>
+                        <label for="admin-username" class="block text-sm font-medium text-gray-700">Admin ID</label>
+                        <input type="text" id="admin-username" value="admin" required class="mt-1 block w-full p-3 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label for="admin-password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" id="admin-password" value="admin123" required class="mt-1 block w-full p-3 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition duration-300">Sign In</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ===== ADMIN DASHBOARD PAGE ===== -->
+        <div id="page-dashboard" class="page">
+            <div class="container mx-auto p-4 md:p-8">
+                 <header class="flex justify-between items-center mb-10">
+                    <div class="flex items-center gap-4">
+                        <i class="fas fa-user-cog text-4xl text-indigo-600"></i>
+                        <div>
+                            <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Administrator Dashboard</h1>
+                            <p class="text-sm text-gray-600">Live Transaction Monitoring</p>
+                        </div>
+                    </div>
+                    <button onclick="logout()" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300"><i class="fas fa-sign-out-alt mr-2"></i>Logout</button>
+                </header>
+                
+                <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8">
+                    <!-- Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-blue-50 p-6 rounded-lg border border-blue-200"><p class="text-3xl font-bold text-blue-800" id="stat-total">0</p><p class="text-blue-700">Total Transactions Today</p></div>
+                        <div class="bg-red-50 p-6 rounded-lg border border-red-200"><p class="text-3xl font-bold text-red-800" id="stat-flagged">0</p><p class="text-red-700">Flagged for Review</p></div>
+                        <div class="bg-yellow-50 p-6 rounded-lg border border-yellow-200"><p class="text-3xl font-bold text-yellow-800" id="stat-recovery">0</p><p class="text-yellow-700">Active Recovery Cases</p></div>
+                    </div>
+                    <!-- Charts -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white p-4 rounded-lg shadow"><canvas id="transactionsChart"></canvas></div>
+                        <div class="bg-white p-4 rounded-lg shadow"><canvas id="fraudPieChart"></canvas></div>
+                    </div>
+                    <!-- Live Feed -->
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4">Live Transaction Feed</h3>
+                        <div class="bg-white rounded-lg shadow overflow-hidden">
+                            <table class="min-w-full leading-normal">
+                                <thead>
+                                    <tr class="border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        <th class="px-5 py-3">Transaction ID</th>
+                                        <th class="px-5 py-3">User</th>
+                                        <th class="px-5 py-3">Amount</th>
+                                        <th class="px-5 py-3">Time</th>
+                                        <th class="px-5 py-3">Location</th>
+                                        <th class="px-5 py-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transaction-feed-body">
+                                    <tr class="border-b border-gray-200"><td colspan="6" class="px-5 py-5 text-center text-gray-500">Awaiting transactions from the User Portal...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let transactionsChart, fraudPieChart;
+
+        function navigateTo(pageId) {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('page-active'));
+            document.getElementById(pageId).classList.add('page-active');
+        }
+
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            navigateTo('page-dashboard');
+            initializeCharts();
+            updateDashboard();
+            // Listen for storage changes from the other tab
+            window.addEventListener('storage', (event) => {
+                if (event.key === 'hfms-transactions') {
+                    updateDashboard();
+                }
+            });
+            // Also keep polling as a fallback
+            setInterval(updateDashboard, 5000); 
+        });
+
+        function logout() {
+            navigateTo('page-login');
+             // Consider clearing the interval if you have one running
+        }
+
+        function initializeCharts() {
+            if (transactionsChart) { transactionsChart.destroy(); }
+            if (fraudPieChart) { fraudPieChart.destroy(); }
+
+            const txCtx = document.getElementById('transactionsChart').getContext('2d');
+            transactionsChart = new Chart(txCtx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'Number of Transactions', data: [], borderColor: '#4f46e5', tension: 0.1 }] },
+                options: { responsive: true, plugins: { title: { display: true, text: 'Transactions Over Time' } } }
+            });
+
+            const fraudCtx = document.getElementById('fraudPieChart').getContext('2d');
+            fraudPieChart = new Chart(fraudCtx, {
+                type: 'pie',
+                data: { labels: ['Legitimate', 'Fraudulent', 'In Recovery'], datasets: [{ data: [0, 0, 0], backgroundColor: ['#10b981', '#ef4444', '#f59e0b'] }] },
+                options: { responsive: true, plugins: { title: { display: true, text: 'Transaction Status Breakdown' } } }
+            });
+        }
+
+        function updateDashboard() {
+            const transactions = JSON.parse(localStorage.getItem('hfms-transactions') || '[]');
+            const feedBody = document.getElementById('transaction-feed-body');
+            
+            // Avoid unnecessary re-renders if data hasn't changed
+            const currentRenderedIds = Array.from(feedBody.querySelectorAll('tr')).map(tr => tr.dataset.id).join(',');
+            const newIds = transactions.map(t => t.id).join(',');
+            if(currentRenderedIds === newIds && transactions.length > 0) return;
+
+            feedBody.innerHTML = '';
+
+            if (transactions.length === 0) {
+                 feedBody.innerHTML = '<tr><td colspan="6" class="px-5 py-5 text-center text-gray-500">Awaiting transactions from the User Portal...</td></tr>';
+                 document.getElementById('stat-total').textContent = 0;
+                 document.getElementById('stat-flagged').textContent = 0;
+                 document.getElementById('stat-recovery').textContent = 0;
+                 return;
+            }
+
+            let recoveryCount = 0;
+            let flaggedCount = 0;
+            let legitimateCount = 0;
+            
+            transactions.forEach(t => {
+                let sClass = '';
+                if (t.status === 'Completed' || t.status === 'Reversed') { 
+                    sClass = 'bg-green-100 text-green-800';
+                    legitimateCount++;
+                } else if (t.status === 'Flagged') { 
+                    sClass = 'bg-red-100 text-red-800'; 
+                    flaggedCount++;
+                } else if (t.status === 'Processing') { 
+                    sClass = 'bg-yellow-100 text-yellow-800';
+                } else if (t.status === 'Recovery In Progress') { 
+                    sClass = 'bg-purple-100 text-purple-800';
+                    recoveryCount++;
+                }
+                
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-200 hover:bg-gray-50';
+                row.dataset.id = t.id; // For change detection
+                row.innerHTML = `<td class="px-5 py-4 text-sm">${t.id}</td><td class="px-5 py-4 text-sm">${t.user}</td><td class="px-5 py-4 text-sm">${t.amount}</td><td class="px-5 py-4 text-sm">${t.time}</td><td class="px-5 py-4 text-sm">${t.location}</td><td class="px-5 py-4 text-sm"><span class="relative inline-block px-3 py-1 font-semibold leading-tight rounded-full ${sClass}">${t.status}</span></td>`;
+                feedBody.appendChild(row);
+            });
+            
+            const totalFlaggedOrRecovery = flaggedCount + recoveryCount;
+
+            document.getElementById('stat-total').textContent = transactions.length;
+            document.getElementById('stat-flagged').textContent = totalFlaggedOrRecovery;
+            document.getElementById('stat-recovery').textContent = recoveryCount;
+            
+            if(transactionsChart) {
+                transactionsChart.data.labels = transactions.map(t => t.time).reverse();
+                transactionsChart.data.datasets[0].data = transactions.map((_, i) => i + 1).reverse();
+                transactionsChart.update();
+            }
+            if(fraudPieChart) {
+                fraudPieChart.data.datasets[0].data = [legitimateCount, flaggedCount, recoveryCount];
+                fraudPieChart.update();
+            }
+        }
+    </script>
+</body>
+</html>
+
